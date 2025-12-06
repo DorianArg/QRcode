@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StoreProvider } from './context/StoreContext';
 import { ViewMode, AdminSection } from './types';
 import { ProfileView } from './views/admin/ProfileView';
@@ -9,6 +9,23 @@ import { OrdersView } from './views/admin/OrdersView';
 import { DashboardView } from './views/admin/DashboardView';
 import { CustomerView } from './views/customer/CustomerView';
 import { LayoutDashboard, UtensilsCrossed, QrCode, Smartphone, LogOut, Store, ShoppingBag } from 'lucide-react';
+
+const getCustomerRoute = (location: Location) => {
+  if (!location.pathname.startsWith('/menu/')) return null;
+
+  const match = location.pathname.match(/^\/menu\/([^/]+)/);
+  if (!match) return null;
+
+  const slug = match[1];
+  const searchParams = new URLSearchParams(location.search);
+  const tableParam = searchParams.get('table');
+  const tableId = tableParam ? Number.parseInt(tableParam, 10) : undefined;
+
+  return {
+    slug,
+    tableId: Number.isNaN(tableId) ? undefined : tableId,
+  };
+};
 
 const AdminSidebar: React.FC<{ 
   activeSection: AdminSection, 
@@ -110,7 +127,7 @@ const MobileNav: React.FC<{
   );
 }
 
-const AppContent: React.FC = () => {
+const AdminApp: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('ADMIN');
   const [adminSection, setAdminSection] = useState<AdminSection>('DASHBOARD');
 
@@ -130,8 +147,8 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-slate-50">
-      <AdminSidebar 
-        activeSection={adminSection} 
+      <AdminSidebar
+        activeSection={adminSection}
         onNavigate={setAdminSection}
       />
       <MobileNav activeSection={adminSection} onNavigate={setAdminSection} />
@@ -175,10 +192,32 @@ const AppContent: React.FC = () => {
   );
 };
 
+const AppRouter: React.FC = () => {
+  const [customerRoute, setCustomerRoute] = useState(() =>
+    typeof window !== 'undefined' ? getCustomerRoute(window.location) : null
+  );
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (typeof window === 'undefined') return;
+      setCustomerRoute(getCustomerRoute(window.location));
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  if (customerRoute) {
+    return <CustomerView slug={customerRoute.slug} tableId={customerRoute.tableId} />;
+  }
+
+  return <AdminApp />;
+};
+
 const App: React.FC = () => {
   return (
     <StoreProvider>
-      <AppContent />
+      <AppRouter />
     </StoreProvider>
   );
 };

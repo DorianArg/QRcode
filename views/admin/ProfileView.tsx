@@ -14,11 +14,16 @@ export const ProfileView: React.FC = () => {
     setFormData(profile);
   }, [profile]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateProfile(formData);
-    setMessage('Informations mises à jour avec succès !');
-    setTimeout(() => setMessage(''), 3000);
+    try {
+      await updateProfile(formData);
+      setMessage('Informations mises à jour avec succès !');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du profil', error);
+      setMessage('Erreur lors de la mise à jour.');
+    }
   };
 
   return (

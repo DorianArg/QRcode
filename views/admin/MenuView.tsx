@@ -85,14 +85,14 @@ export const MenuView: React.FC = () => {
     // Insert
     newList.splice(targetIndex, 0, updatedDish);
     
-    reorderDishes(newList);
+    void reorderDishes(newList);
     
     dragItem.current = null;
     dragOverItem.current = null;
   };
 
   const toggleAvailability = (dish: Dish) => {
-    updateDish({ ...dish, isAvailable: !dish.isAvailable });
+    void updateDish({ ...dish, isAvailable: !dish.isAvailable });
   };
 
   const handleEdit = (dish: Dish) => {
@@ -105,11 +105,11 @@ export const MenuView: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSave = (dish: Dish) => {
+  const handleSave = async (dish: Dish) => {
     if (editingDish) {
-      updateDish(dish);
+      await updateDish(dish);
     } else {
-      addDish(dish);
+      await addDish(dish);
     }
   };
 
@@ -144,8 +144,8 @@ export const MenuView: React.FC = () => {
                 <div key={cat.id} className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg shadow-sm border border-slate-200 group hover:border-slate-300 transition-colors">
                   <span className="font-bold text-sm text-slate-700">{cat.label}</span>
                   <div className="h-4 w-px bg-slate-200 mx-1"></div>
-                  <button 
-                    onClick={() => updateCategory({...cat, isVisible: !cat.isVisible})}
+                  <button
+                    onClick={() => { void updateCategory({...cat, isVisible: !cat.isVisible}); }}
                     className={`p-1 rounded hover:bg-slate-100 ${cat.isVisible ? 'text-green-600' : 'text-slate-300'}`}
                     title={cat.isVisible ? "Visible" : "Caché"}
                   >
@@ -154,7 +154,7 @@ export const MenuView: React.FC = () => {
                   <button 
                     onClick={() => {
                       const newLabel = prompt("Nouveau nom:", cat.label);
-                      if (newLabel) updateCategory({...cat, label: newLabel});
+                      if (newLabel) { void updateCategory({...cat, label: newLabel}); }
                     }}
                     className="p-1 text-blue-500 hover:bg-blue-50 rounded"
                   >
@@ -165,7 +165,7 @@ export const MenuView: React.FC = () => {
               <button 
                 onClick={() => {
                   const label = prompt("Nom de la catégorie:");
-                  if (label) addCategory(label);
+                  if (label) { void addCategory(label); }
                 }}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-dashed border-slate-300 text-slate-500 hover:bg-white hover:text-rose-600 hover:border-rose-300 text-sm font-medium transition-all"
               >
@@ -307,7 +307,7 @@ export const MenuView: React.FC = () => {
                             {/* Actions */}
                             <div className="flex items-center gap-2 pl-4 border-l border-slate-100">
                               <button 
-                                onClick={() => duplicateDish(dish)}
+                                onClick={() => { void duplicateDish(dish); }}
                                 className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                 title="Dupliquer"
                               >
@@ -324,7 +324,7 @@ export const MenuView: React.FC = () => {
                               
                               <button 
                                 onClick={() => {
-                                  if (window.confirm('Supprimer ce plat ?')) deleteDish(dish.id);
+                                  if (window.confirm('Supprimer ce plat ?')) { void deleteDish(dish.id); }
                                 }}
                                 className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                 title="Supprimer"

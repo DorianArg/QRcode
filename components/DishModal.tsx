@@ -8,7 +8,7 @@ import { useStore } from '../context/StoreContext';
 interface DishModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (dish: Dish) => void;
+  onSave: (dish: Dish) => Promise<void> | void;
   initialData?: Dish;
   defaultCategoryId?: string;
 }
@@ -67,9 +67,9 @@ export const DishModal: React.FC<DishModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({
+    await onSave({
       id: initialData?.id || Date.now().toString(),
       name: formData.name || 'Nouveau Plat',
       price: Number(formData.price) || 0,

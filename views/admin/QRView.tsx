@@ -21,9 +21,9 @@ export const QRView: React.FC = () => {
   const handleUpdate = () => {
     setIsGenerating(true);
     // Simulate processing delay for better UX
-    setTimeout(() => {
+    setTimeout(async () => {
       setTableCount(Math.max(1, localTableCount));
-      updateProfile({ ...profile, slug: localSlug });
+      await updateProfile({ ...profile, slug: localSlug });
       setIsGenerating(false);
     }, 500);
   };

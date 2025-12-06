@@ -1,26 +1,39 @@
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { 
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import {
   Dish, RestaurantProfile, Category, TableSession, CartItem,
-  DEFAULT_PROFILE, INITIAL_DISHES, INITIAL_CATEGORIES 
+  DEFAULT_PROFILE, INITIAL_DISHES, INITIAL_CATEGORIES
 } from '../types';
+import {
+  createAdminCategory,
+  createAdminDish,
+  deleteAdminCategory,
+  deleteAdminDish,
+  getAdminCategories,
+  getAdminDishes,
+  getAdminRestaurant,
+  slugify,
+  updateAdminCategory,
+  updateAdminDish,
+  updateAdminRestaurant
+} from '../services/api/adminService';
 
 interface StoreContextType {
   profile: RestaurantProfile;
-  updateProfile: (profile: RestaurantProfile) => void;
+  updateProfile: (profile: RestaurantProfile) => Promise<void>;
   
   categories: Category[];
-  updateCategory: (category: Category) => void;
-  reorderCategories: (newOrder: Category[]) => void;
-  addCategory: (label: string) => void;
-  deleteCategory: (id: string) => void;
+  updateCategory: (category: Category) => Promise<void>;
+  reorderCategories: (newOrder: Category[]) => Promise<void>;
+  addCategory: (label: string) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
 
   dishes: Dish[];
-  addDish: (dish: Dish) => void;
-  updateDish: (dish: Dish) => void;
-  deleteDish: (id: string) => void;
-  duplicateDish: (dish: Dish) => void;
-  reorderDishes: (newDishes: Dish[]) => void;
+  addDish: (dish: Dish) => Promise<void>;
+  updateDish: (dish: Dish) => Promise<void>;
+  deleteDish: (id: string) => Promise<void>;
+  duplicateDish: (dish: Dish) => Promise<void>;
+  reorderDishes: (newDishes: Dish[]) => Promise<void>;
   
   tableCount: number;
   setTableCount: (count: number) => void;
@@ -39,65 +52,168 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [dishes, setDishes] = useState<Dish[]>(INITIAL_DISHES);
   const [tableCount, setTableCount] = useState<number>(6);
+  const [, setLoadError] = useState<string | null>(null);
+
+  const DEFAULT_SLUG = DEFAULT_PROFILE.slug || 'demo-1';
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const restaurant = await getAdminRestaurant(DEFAULT_SLUG);
+        const [fetchedCategories, fetchedDishes] = await Promise.all([
+          getAdminCategories(restaurant.slug),
+          getAdminDishes(restaurant.slug)
+        ]);
+
+        setProfile(restaurant);
+        setCategories(fetchedCategories.sort((a, b) => a.order - b.order));
+        setDishes(
+          fetchedDishes.sort(
+            (a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)
+          )
+        );
+      } catch (error) {
+        console.error('Failed to load admin data', error);
+        setLoadError('Impossible de charger les données.');
+      }
+    };
+
+    fetchData();
+  }, [DEFAULT_SLUG]);
   
   // Store the state of each table (simulating backend)
   const [tableSessions, setTableSessions] = useState<Record<number, TableSession>>({});
 
-  const updateProfile = (newProfile: RestaurantProfile) => {
-    setProfile(newProfile);
+  const updateProfile = async (newProfile: RestaurantProfile) => {
+    try {
+      const updated = await updateAdminRestaurant(profile.slug, newProfile);
+      setProfile(updated);
+    } catch (error) {
+      console.error('Failed to update profile', error);
+      throw error;
+    }
   };
 
   // Category Actions
-  const updateCategory = (updatedCat: Category) => {
-    setCategories(prev => prev.map(c => c.id === updatedCat.id ? updatedCat : c));
+  const updateCategory = async (updatedCat: Category) => {
+    try {
+      const saved = await updateAdminCategory(Number(updatedCat.id), {
+        label: updatedCat.label,
+        slug: updatedCat.slug || slugify(updatedCat.label),
+        display_order: updatedCat.order,
+        is_visible: updatedCat.isVisible
+      });
+      setCategories(prev => prev.map(c => c.id === updatedCat.id ? saved : c));
+    } catch (error) {
+      console.error('Failed to update category', error);
+      throw error;
+    }
   };
 
-  const reorderCategories = (newOrder: Category[]) => {
-    setCategories(newOrder);
+  const reorderCategories = async (newOrder: Category[]) => {
+    try {
+      const updated = await Promise.all(
+        newOrder.map((cat, index) =>
+          updateAdminCategory(Number(cat.id), {
+            label: cat.label,
+            slug: cat.slug || slugify(cat.label),
+            display_order: index,
+            is_visible: cat.isVisible
+          })
+        )
+      );
+      setCategories(updated.sort((a, b) => a.order - b.order));
+    } catch (error) {
+      console.error('Failed to reorder categories', error);
+    }
   };
 
-  const addCategory = (label: string) => {
-    const newCat: Category = {
-      id: `cat_${Date.now()}`,
-      label,
-      order: categories.length,
-      isVisible: true
-    };
-    setCategories(prev => [...prev, newCat]);
+  const addCategory = async (label: string) => {
+    if (!profile.slug) return;
+    try {
+      const created = await createAdminCategory(profile.slug, {
+        label,
+        slug: slugify(label),
+        display_order: categories.length,
+        is_visible: true
+      });
+      setCategories(prev => [...prev, created].sort((a, b) => a.order - b.order));
+    } catch (error) {
+      console.error('Failed to add category', error);
+    }
   };
 
-  const deleteCategory = (id: string) => {
-    setCategories(prev => prev.filter(c => c.id !== id));
-    setDishes(prev => prev.filter(d => d.categoryId !== id));
+  const deleteCategory = async (id: string) => {
+    try {
+      await deleteAdminCategory(Number(id));
+      setCategories(prev => prev.filter(c => c.id !== id));
+      setDishes(prev => prev.filter(d => d.categoryId !== id));
+    } catch (error) {
+      console.error('Failed to delete category', error);
+      throw error;
+    }
   };
 
   // Dish Actions
-  const addDish = (newDish: Dish) => {
-    setDishes(prev => [...prev, newDish]);
+  const addDish = async (newDish: Dish) => {
+    if (!profile.slug) return;
+    try {
+      const order = dishes.filter(d => d.categoryId === newDish.categoryId).length;
+      const created = await createAdminDish(profile.slug, {
+        ...newDish,
+        displayOrder: order
+      });
+      setDishes(prev => [...prev, created].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0)));
+    } catch (error) {
+      console.error('Failed to add dish', error);
+      throw error;
+    }
   };
 
-  const updateDish = (updatedDish: Dish) => {
-    setDishes(prev => prev.map(d => d.id === updatedDish.id ? updatedDish : d));
+  const updateDish = async (updatedDish: Dish) => {
+    try {
+      const saved = await updateAdminDish(Number(updatedDish.id), updatedDish);
+      setDishes(prev => prev.map(d => d.id === updatedDish.id ? saved : d));
+    } catch (error) {
+      console.error('Failed to update dish', error);
+      throw error;
+    }
   };
 
-  const deleteDish = (id: string) => {
-    setDishes(prev => prev.filter(d => d.id !== id));
+  const deleteDish = async (id: string) => {
+    try {
+      await deleteAdminDish(Number(id));
+      setDishes(prev => prev.filter(d => d.id !== id));
+    } catch (error) {
+      console.error('Failed to delete dish', error);
+      throw error;
+    }
   };
 
-  const duplicateDish = (dishToCopy: Dish) => {
-    const newDish: Dish = {
+  const duplicateDish = async (dishToCopy: Dish) => {
+    const copy: Dish = {
       ...dishToCopy,
-      id: `dish_${Date.now()}`,
+      id: '',
       name: `${dishToCopy.name} (Copie)`
     };
-    setDishes(prev => [...prev, newDish]);
+    await addDish(copy);
   };
 
-  const reorderDishes = (newDishes: Dish[]) => {
-    setDishes(prev => {
-      const otherDishes = prev.filter(d => !newDishes.find(nd => nd.id === d.id));
-      return [...otherDishes, ...newDishes];
-    });
+  const reorderDishes = async (newDishes: Dish[]) => {
+    try {
+      const updated = await Promise.all(
+        newDishes.map((dish, index) =>
+          updateAdminDish(Number(dish.id), { ...dish, displayOrder: index })
+        )
+      );
+
+      setDishes(prev => {
+        const otherDishes = prev.filter(d => !newDishes.find(nd => nd.id === d.id));
+        return [...otherDishes, ...updated].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
+      });
+    } catch (error) {
+      console.error('Failed to reorder dishes', error);
+    }
   };
 
   // --- Table & Order Logic ---

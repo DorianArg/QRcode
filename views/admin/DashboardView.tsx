@@ -34,14 +34,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate, onPrev
   }, [profile]);
 
   const toggleStatus = () => {
-    updateProfile({ ...profile, isOnline: !profile.isOnline });
+    void updateProfile({ ...profile, isOnline: !profile.isOnline });
   };
 
   const updateTheme = () => {
     const colors = ['#e11d48', '#2563eb', '#16a34a', '#d97706', '#7c3aed'];
     const currentIdx = colors.indexOf(profile.themeColor);
     const nextColor = colors[(currentIdx + 1) % colors.length];
-    updateProfile({ ...profile, themeColor: nextColor });
+    void updateProfile({ ...profile, themeColor: nextColor });
   };
 
   // Safe opening hours display

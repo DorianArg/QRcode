@@ -4,6 +4,7 @@ export interface Category {
   label: string;
   order: number;
   isVisible: boolean;
+  slug?: string;
 }
 
 export interface Dish {
@@ -16,6 +17,7 @@ export interface Dish {
   imageUrl?: string;
   isAvailable: boolean;
   tags: string[];
+  displayOrder?: number;
 }
 
 export interface RestaurantProfile {
